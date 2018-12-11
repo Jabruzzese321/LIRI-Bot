@@ -1,144 +1,111 @@
 require("dotenv").config();
+var keys = require("./keys.js");
+var request = require('request');
+var Spotify = require('node-spotify-api');
+var fs = require('fs');
+var input = process.argv;
+var action = input[2];
+var inputs = input[3];
 
-var keys = require("keys.js");
-var spotify = new Spotify(keys.spotify);
+switch (action) {
+    case "concert-this":
+    getConcert(inputs);
+    break;
 
-var fs = require("fs");
-var request = require("request");
-var filename = './log.txt';
+	case "spotify-this-song":
+	spotify(inputs);
+	break;
 
-var userCommand = process.argv[2];
-var secondCommand = process.argv[3];
+	case "movie-this":
+	movie(inputs);
+	break;
 
-for (var i = 4; i < process.argv.length; i++) {
-    secondCommand += '+' + process.argv[i];
+	case "do-what-it-says":
+	doit();
+	break;
+};
+
+function getConcert(artist) {
+    var concertUrl = "https://rest.bandsintown.com/artists/" + artist + "/events?app_id=codingbootcamp";
+
+    request(concertUrl, function (error, response, body) {
+
+        if (!error && response.statusCode === 200) {
+            console.log(JSON.stringify(response.body))
+            var body = JSON.parse(response.body);
+
+            console.log("Name: " + body[0].lineup);
+            console.log("Location: " + body.city);
+            console.log("Date: " + body[0].datetime);
+        } 
+        
+        else {
+            console.log("Error occurred.")
+        }
+    });
 }
 
-var getArtistNames = function (artist) {
-    return artist.name;
+function spotify(inputs) {
+
+	var spotify = new Spotify(keys.spotify);
+		if (!inputs){
+        	inputs = 'The Sign';
+    	}
+		spotify.search({ type: 'track', query: inputs }, function(err, data) {
+			if (err){
+	            console.log('Error occurred: ' + err);
+	            return;
+	        }
+
+	        var songInfo = data.tracks.items;
+	        console.log("Artist(s): " + songInfo[0].artists[0].name);
+	        console.log("Song Name: " + songInfo[0].name);
+	        console.log("Preview Link: " + songInfo[0].preview_url);
+	        console.log("Album: " + songInfo[0].album.name);
+	});
+}
+
+function movie(inputs) {
+
+	var queryUrl = "http://www.omdbapi.com/?t=" + inputs + "&y=&plot=short&apikey=40e9cece";
+
+	request(queryUrl, function(error, response, body) {
+		if (!inputs){
+        	inputs = 'Mr Nobody';
+    	}
+		if (!error && response.statusCode === 200) {
+
+		    console.log("Title: " + JSON.parse(body).Title);
+		    console.log("Release Year: " + JSON.parse(body).Year);
+		    console.log("IMDB Rating: " + JSON.parse(body).imdbRating);
+		    console.log("Rotten Tomatoes Rating: " + JSON.parse(body).Ratings[1].Value);
+		    console.log("Country: " + JSON.parse(body).Country);
+		    console.log("Language: " + JSON.parse(body).Language);
+		    console.log("Plot: " + JSON.parse(body).Plot);
+		    console.log("Actors: " + JSON.parse(body).Actors);
+		}
+	});
 };
 
-var getSpotify = function (songName) {
-    if (songName === undefined) {
-        songName = "What's my age again";
-    }
+function doit() {
+	fs.readFile('random.txt', "utf8", function(error, data){
 
-    spotify.search(
-        {
-            type: "track",
-            query: userCommand
-        },
-        function (err, data) {
-            if (err) {
-                console.log("Error occurred: " + err);
-                return;
-            }
+		if (error) {
+    		return console.log(error);
+  		}
 
-            var songs = data.tracks.items;
+		// Then split it by commas (to make it more readable)
+		var dataArr = data.split(",");
 
-            for (var i = 0; i < songs.length; i++) {
-                console.log(i);
-                console.log("artist(s): " + songs[i].artists.map(getArtistNames));
-                console.log("song name: " + songs[i].name);
-                console.log("preview song: " + songs[i].preview_url);
-                console.log("album: " + songs[i].album.name);
-                console.log("-----------------------------------");
-            }
-        }
-    );
+		// Each command is represented. Because of the format in the txt file, remove the quotes to run these commands. 
+		if (dataArr[0] === "spotify-this-song") {
+			var songcheck = dataArr[1].slice(1, -1);
+			spotify(songcheck);
+		} else if (dataArr[0] === "movie-this") {
+			var movie_name = dataArr[1].slice(1, -1);
+			movie(movie_name);
+		} 
+		
+  	});
+
 };
-
-function mySwitch(userCommand) {
-
-    switch (userCommand) {
-
-        case "concert-this":
-            getConcert();
-            break;
-
-        case "spotify-this-song":
-            getSpotify();
-            break;
-
-        case "movie-this":
-            getMovie();
-            break;
-
-        case "do-what-it-says":
-            doIt();
-            break;
-    }
-
-    function getConcert() {
-        var concertUrl = "https://rest.bandsintown.com/artists/" + artist + "/events?app_id=codingbootcamp";
-
-        request(queryUrl, function (error, response, body) {
-
-            if (!error && response.statusCode === 200) {
-                var body = JSON.parse(body);
-
-                logOutput('================ Concert Info ================');
-                logOutput("Name: " + body.Name);
-                logOutput("Location: " + body.Location);
-                logOutput("Date: " + body.Date);
-                logOutput('==================END=================');
-
-            } 
-            
-            else {
-
-                console.log("Error occurred.")
-            }
-        });
-    }
-
-    function getMovie() {
-        var movieName = secondCommand;
-        var queryUrl = "http://www.omdbapi.com/?t=" + movieName + "&y=&plot=short&tomatoes=true&apikey=trilogy";
-
-        request(queryUrl, function (error, response, body) {
-
-            if (!error && response.statusCode === 200) {
-                var body = JSON.parse(body);
-
-                logOutput('================ Movie Info ================');
-                logOutput("Title: " + body.Title);
-                logOutput("Release Year: " + body.Year);
-                logOutput("IMdB Rating: " + body.imdbRating);
-                logOutput("Country: " + body.Country);
-                logOutput("Language: " + body.Language);
-                logOutput("Plot: " + body.Plot);
-                logOutput("Actors: " + body.Actors);
-                logOutput("Rotten Tomatoes Rating: " + body.Ratings[2].Value);
-                logOutput("Rotten Tomatoes URL: " + body.tomatoURL);
-                logOutput('==================END=================');
-
-            } 
-            
-            else {
-
-                console.log("Error occurred.")
-            }
-
-            if (movieName === "Mr. Nobody") {
-                console.log("-----------------------");
-                console.log("If you haven't watched 'Mr. Nobody,' then you should: http://www.imdb.com/title/tt0485947/");
-                console.log("It's on Netflix!");
-            }
-        });
-    }
-
-
-    function doIt() {
-        fs.readFile("random.txt", "utf8", function (error, data) {
-            if (!error);
-            console.log(data.toString());
-            var cmds = data.toString().split(',');
-        });
-    }
-
-
-
-} 
-
-mySwitch(userCommand);
