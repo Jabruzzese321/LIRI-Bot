@@ -1,6 +1,7 @@
 require("dotenv").config();
 var keys = require("./keys.js");
 var request = require('request');
+var Moment = require('moment');
 var Spotify = require('node-spotify-api');
 var fs = require('fs');
 var input = process.argv;
@@ -31,12 +32,11 @@ function getConcert(artist) {
     request(concertUrl, function (error, response, body) {
 
         if (!error && response.statusCode === 200) {
-            console.log(JSON.stringify(response.body))
             var body = JSON.parse(response.body);
-
+			console.log(body);
             console.log("Name: " + body[0].lineup);
-            console.log("Location: " + body.city);
-            console.log("Date: " + body[0].datetime);
+            console.log("Location: " + body[0].venue.name + " " + body[0].venue.city + " " + body[0].venue.region);
+			console.log("Date: " + Moment(body[0].datetime).format('MMMM Do YYYY'));
         } 
         
         else {
